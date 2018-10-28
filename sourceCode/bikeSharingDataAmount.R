@@ -1,10 +1,12 @@
-install.packages("dplyr")
+#install.packages("dplyr")
 library(dplyr)
-install.packages("glmnet")
+#install.packages("glmnet")
 library(glmnet)
+#install.packages("randomForest")
+library(randomForest)
 
 #Install Package
-install.packages("e1071")
+#install.packages("e1071")
 
 #Load Library
 library(e1071)
@@ -48,6 +50,7 @@ ads_testData$hourSplit[(ads_testData$hourSplit %in% c(18,19,20,21,22,23))] <- 4 
 ## making loop for splitting data sets and running models
 
 summaryListLinear <- list()
+summaryListRF <- list()
 for(i in 1:10){
   
 # taking test data
@@ -67,8 +70,8 @@ ads_bikeSplit <- bikeSplit
 ads_bikeSplit$holiday <- as.factor(bikeSplit$holiday)
 ads_bikeSplit$weekday <- as.factor(bikeSplit$weekday)
 ads_bikeSplit$workingday <- as.factor(bikeSplit$workingday)
-ads_bikeSplit$casual <- as.factor(bikeSplit$casual)
-ads_bikeSplit$registered <- as.factor(bikeSplit$registered)
+#ads_bikeSplit$casual <- as.factor(bikeSplit$casual)
+#ads_bikeSplit$registered <- as.factor(bikeSplit$registered)
 ads_bikeSplit$season <- as.factor(bikeSplit$season)
 ads_bikeSplit$weathersit <- as.factor(bikeSplit$weathersit)
 #View(ads_bikeSplit)
@@ -118,22 +121,39 @@ testDataSplit$predicted <- (predict(regLinear,testDataSplit))
 linearMape <- mean(abs((testDataSplit$cnt-testDataSplit$predicted)/testDataSplit$cnt) * 100)
 summaryListLinear[[i]][[3]] <- linearMape
 summaryListLinear[[i]][[4]] <- summary(regLinear)$adj.r.squared
-# lasso regression
+
+# test data for random forest
+testDataSplitRF <- ads_testData
+# random forest
+print(paste("split",i,sep = " "))
+randomF <- randomForest(cnt ~ season + yr + holiday + hum + windspeed + weathersit + hourSplit + sunday + atemp ,data = ads_bikeSplit,ntree=150,do.trace=5)
+common <- intersect(names(ads_bikeSplit), names(testDataSplitRF))
+for(p in common){ if (class(ads_bikeSplit[[p]]) == "factor") {
+  levels(testDataSplitRF[[p]]) <- levels(ads_bikeSplit[[p]]) } }
+
+testDataSplitRF$predicted <- predict(randomF,testDataSplitRF)
+RFMape <- mean(abs((testDataSplitRF$cnt-testDataSplitRF$predicted)/testDataSplitRF$cnt) * 100)
+summaryListRF[[i]] <- randomF
+summaryListRF[[i]][[2]] <- length(nsampleBikeSet)
+summaryListRF[[i]][[3]] <- RFMape
+
+
+
 
 #regressor dataset
 
-xDataSet <- as.matrix(ads_bikeSplit[,c("season", "yr", "holiday" ,"hum","windspeed","weathersit","hourSplit","sunday","atemp")])
-yDataSet <- as.matrix(ads_bikeSplit$cnt)
+#xDataSet <- as.matrix(ads_bikeSplit[,c("season", "yr", "holiday" ,"hum","windspeed","weathersit","hourSplit","sunday","atemp")])
+#yDataSet <- as.matrix(ads_bikeSplit$cnt)
 
-model_lasso <- glmnet(x=xDataSet,y=yDataSet, alpha=1, lambda=c(1,0.1,0.05,0.01,seq(0.009,0.001,-0.001), 0.00075,0.0005,0.0001))
+#model_lasso <- glmnet(x=xDataSet,y=yDataSet, alpha=1, lambda=c(1,0.1,0.05,0.01,seq(0.009,0.001,-0.001), 0.00075,0.0005,0.0001))
 #summary(model_lasso)
 
-model_svm <- svm(formula,data = ads_bikeSplit )
+#model_svm <- svm(formula,data = ads_bikeSplit )
 #predict() model_svm$residuals
-RSS <- c(crossprod(model_svm$residuals))
-MSE <- RSS / length(model_svm$residuals)
-RMSE <- sqrt(MSE)
-View(RMSE)
+#RSS <- c(crossprod(model_svm$residuals))
+#MSE <- RSS / length(model_svm$residuals)
+#RMSE <- sqrt(MSE)
+#View(RMSE)
 
 }
 
